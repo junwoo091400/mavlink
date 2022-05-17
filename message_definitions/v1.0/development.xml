@@ -197,6 +197,101 @@
         <param index="1" label="Action" enum="FENCE_ACTION">Fence action on breach.</param>
       </entry>
     </enum>
+    <enum name="MAV_BATTERY_STATUS_FLAGS" bitmask="true">
+      <description>Battery status flags for fault, health and state indication.</description>
+      <entry value="1" name="MAV_BATTERY_STATUS_FLAGS_READY_TO_USE">
+        <description>
+          The battery is ready to use (fly).
+          Only set if the battery is safe and ready to fly with (not charging, no critical faults, such as those that would set MAV_BATTERY_STATUS_FLAGS_REQUIRES_SERVICE or MAV_BATTERY_STATUS_FLAGS_BAD_BATTERY, etc.).
+        </description>
+      </entry>
+      <entry value="2" name="MAV_BATTERY_STATUS_FLAGS_CHARGING">
+        <description>
+          Battery is charging.
+          Not ready to use (MAV_BATTERY_STATUS_FLAGS_READY_TO_USE would not be set).
+        </description>
+      </entry>
+      <entry value="4" name="MAV_BATTERY_STATUS_FLAGS_CELL_BALANCING">
+        <description>
+          Battery is cell balancing (during charging).
+          Not ready to use (MAV_BATTERY_STATUS_FLAGS_READY_TO_USE would not be set).
+        </description>
+      </entry>
+      <entry value="8" name="MAV_BATTERY_STATUS_FLAGS_FAULT_CELL_IMBALANCE">
+        <description>
+          Battery cells are not balanced.
+          Not ready to use.
+        </description>
+      </entry>
+      <entry value="16" name="MAV_BATTERY_STATUS_FLAGS_AUTO_DISCHARGING">
+        <description>
+          Battery is auto discharging (towards storage level).
+          Not ready to use (MAV_BATTERY_STATUS_FLAGS_READY_TO_USE would not be set).
+        </description>
+      </entry>
+      <entry value="32" name="MAV_BATTERY_STATUS_FLAGS_REQUIRES_SERVICE">
+        <description>
+          Battery requires service (not safe to fly). 
+          This is set at vendor discretion.
+          It is likely to be set for most faults, and may also be set according to a maintenance schedule (such as age, or number of recharge cycles, etc.).
+        </description>
+      </entry>
+      <entry value="64" name="MAV_BATTERY_STATUS_FLAGS_BAD_BATTERY">
+        <description>
+          Battery is faulty and cannot be repaired (not safe to fly). 
+          This is set at vendor discretion.
+          The battery should be disposed of safely.
+        </description>
+      </entry>
+      <entry value="128" name="MAV_BATTERY_STATUS_FLAGS_PROTECTIONS_ENABLED">
+        <description>
+          Automatic battery protection monitoring is enabled. 
+          When enabled, the system will monitor for certain kinds of faults, such as cells being over-voltage.
+          If a fault is triggered then and protections are enabled then a safety fault (MAV_BATTERY_STATUS_FLAGS_FAULT_PROTECTION_SYSTEM) will be set and power from the battery will be stopped.
+          Note that the associated fault (such as MAV_BATTERY_STATUS_FLAGS_FAULT_OVER_VOLT) should always be set whether or not the protection system is engaged.
+        </description>
+      </entry>
+      <entry value="256" name="MAV_BATTERY_STATUS_FLAGS_FAULT_PROTECTION_SYSTEM">
+        <description>
+          The battery fault protection system had detected a fault and cut all power from the battery.
+          This will only trigger if MAV_BATTERY_STATUS_FLAGS_PROTECTIONS_ENABLED is set.
+          Other faults like MAV_BATTERY_STATUS_FLAGS_FAULT_OVER_VOLT may also be set, indicating the cause of the protection fault.
+        </description>
+      </entry>
+      <entry value="512" name="MAV_BATTERY_STATUS_FLAGS_FAULT_OVER_VOLT">
+        <description>One or more cells are above their maximum voltage rating.</description>
+      </entry>
+      <entry value="1024" name="MAV_BATTERY_STATUS_FLAGS_FAULT_UNDER_VOLT">
+        <description>
+          One or more cells are below their minimum voltage rating.
+          A battery that had deep-discharged might be irrepairably damaged, and set both MAV_BATTERY_STATUS_FLAGS_FAULT_UNDER_VOLT and MAV_BATTERY_STATUS_FLAGS_BAD_BATTERY.
+        </description>
+      </entry>
+      <entry value="2048" name="MAV_BATTERY_STATUS_FLAGS_FAULT_OVER_TEMPERATURE">
+        <description>Over-temperature fault.</description>
+      </entry>
+      <entry value="4096" name="MAV_BATTERY_STATUS_FLAGS_FAULT_UNDER_TEMPERATURE">
+        <description>Under-temperature fault.</description>
+      </entry>
+      <entry value="8192" name="MAV_BATTERY_STATUS_FLAGS_FAULT_OVER_CURRENT">
+        <description>Over-current fault.</description>
+      </entry>
+      <entry value="16384" name="MAV_BATTERY_STATUS_FLAGS_FAULT_SHORT_CIRCUIT">
+        <description>
+          Short circuit event detected.
+          The battery may or may not be safe to use (check other flags).
+        </description>
+      </entry>
+      <entry value="32768" name="MAV_BATTERY_STATUS_FLAGS_FAULT_INCOMPATIBLE_VOLTAGE">
+        <description>Voltage not compatible with power rail voltage (batteries on same power rail should have similar voltage).</description>
+      </entry>
+      <entry value="65536" name="MAV_BATTERY_STATUS_FLAGS_FAULT_INCOMPATIBLE_FIRMWARE">
+        <description>Battery firmware is not compatible with current autopilot firmware.</description>
+      </entry>
+      <entry value="131072" name="MAV_BATTERY_STATUS_FLAGS_FAULT_INCOMPATIBLE_CELLS_CONFIGURATION">
+        <description>Battery is not compatible due to cell configuration (e.g. 5s1p when vehicle requires 6s).</description>
+      </entry>
+    </enum>
     <enum name="MAV_CMD">
       <entry value="247" name="MAV_CMD_DO_UPGRADE" hasLocation="false" isDestination="false">
         <description>Request a target system to start an upgrade of one (or all) of its components.
@@ -308,6 +403,25 @@
       <field type="int32_t" name="x">X coordinate of center point. Coordinate system depends on frame field.</field>
       <field type="int32_t" name="y">Y coordinate of center point. Coordinate system depends on frame field.</field>
       <field type="float" name="z" units="m">Altitude of center point. Coordinate system depends on frame field.</field>
+    </message>
+    <message id="369" name="BATTERY_STATUS_V2">
+      <description>Battery dynamic information.
+        This should be streamed (nominally at 1Hz).
+        Static/invariant battery information is sent in SMART_BATTERY_INFO.
+
+        The full-battery charge can be inferred from current_remaining and percent_remaining if both values are supplied.
+        The `current_remaining` field should only be sent if it is guaranteed to be near-accurate.
+        Power monitors do not normally send the `current_remaining` field as it can only be accurate if the battery is fully charged when the drone is turned on.
+        (A GCS can use `current_remaining` being invalid as a trigger to notify the user to fully charge the battery before flight).
+      </description>
+      <field type="uint8_t" name="id" instance="true">Battery ID</field>
+      <field type="int16_t" name="temperature" units="cdegC" invalid="INT16_MAX">Temperature of the whole battery pack (not internal electronics). INT16_MAX field not provided.</field>
+      <field type="uint32_t" name="voltage" units="mV" invalid="UINT32_MAX">Battery voltage (total). UINT32_MAX: field not provided.</field>
+      <field type="uint32_t" name="current" units="mA" invalid="UINT32_MAX">Battery current (through all cells/loads). UINT32_MAX: field not provided.</field>
+      <field type="uint32_t" name="current_consumed" units="mAh" invalid="UINT32_MAX">Consumed charge (since vehicle powered on). UINT32_MAX: field not provided. Note: For power modules the expectation is that batteries are fully charged before turning on the vehicle.</field>
+      <field type="uint32_t" name="current_remaining" units="mAh" invalid="UINT32_MAX">Remaining charge (until empty). UINT32_MAX: field not provided. Note: Power monitors should not set this value.</field>
+      <field type="uint8_t" name="percent_remaining" units="%" invalid="UINT8_MAX">Remaining battery energy. Values: [0-100], UINT32_MAX: field not provided.</field>
+      <field type="uint32_t" name="status_flags" display="bitmask" enum="MAV_BATTERY_STATUS_FLAGS">Fault, health, and readiness status indications.</field>
     </message>
     <message id="396" name="COMPONENT_INFORMATION_BASIC">
       <description>Basic component information data.</description>
